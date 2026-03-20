@@ -1,65 +1,114 @@
-import Image from "next/image";
+/**
+ * Home Page — Server Component con ISR (Incremental Static Regeneration).
+ *
+ * Los datos se obtienen en el servidor en build time y se revalidan cada hora.
+ * Esto es crucial para SEO: Google puede leer el contenido sin ejecutar JS.
+ *
+ * En Flutter no existe SSR/SSG — todo se carga en cliente.
+ * Aquí Next.js pre-renderiza el HTML completo antes de enviarlo al browser.
+ */
+import Link from 'next/link';
+import { ArrowRight, ShieldCheck, Truck, Clock } from 'lucide-react';
+import { ProductCard } from '@/components/shared/product-card';
+import type { Category, Product } from '@/lib/types';
 
-export default function Home() {
+// Revalida la página cada hora sin necesidad de rebuild
+export const revalidate = 3600;
+
+async function getHomeData() {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
+  try {
+    const [productsRes, categoriesRes] = await Promise.all([
+      fetch(`${base}/products`, { next: { revalidate: 3600 } }),
+      fetch(`${base}/categories`, { next: { revalidate: 3600 } }),
+    ]);
+    const products: Product[] = productsRes.ok ? await productsRes.json() : [];
+    const categories: Category[] = categoriesRes.ok ? await categoriesRes.json() : [];
+    return { products: products.slice(0, 8), categories };
+  } catch {
+    return { products: [], categories: [] };
+  }
+}
+
+export default async function HomePage() {
+  const { products, categories } = await getHomeData();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="space-y-12">
+      {/* Hero Banner */}
+      <section className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 md:p-12 text-white">
+        <div className="max-w-2xl">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            Tu farmacia de confianza,<br />siempre disponible
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-blue-100 mb-6 text-lg">
+            Medicamentos, vitaminas y más. Con entrega rápida y segura.
           </p>
+          <div className="flex gap-3 flex-wrap">
+            <Link href="/products" className="inline-flex items-center justify-center rounded-lg bg-white text-blue-700 font-medium px-5 h-10 text-sm hover:bg-blue-50 transition-colors">
+              Ver catálogo <ArrowRight size={18} className="ml-2" />
+            </Link>
+            <Link href="/register" className="inline-flex items-center justify-center rounded-lg border border-white text-white font-medium px-5 h-10 text-sm hover:bg-white/10 transition-colors">
+              Crear cuenta
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
+
+      {/* Features */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { icon: Truck, title: 'Entrega rápida', desc: 'Recibe tu pedido en casa' },
+          { icon: ShieldCheck, title: 'Calidad garantizada', desc: 'Productos 100% originales' },
+          { icon: Clock, title: 'Atención 24/7', desc: 'Estamos siempre disponibles' },
+        ].map(({ icon: Icon, title, desc }) => (
+          <div key={title} className="bg-white rounded-xl border border-gray-200 p-5 flex items-start gap-4">
+            <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Icon size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">{title}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Categorías */}
+      {categories.length > 0 && (
+        <section>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Categorías</h2>
+          <div className="flex gap-3 flex-wrap">
+            {categories.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/products?category=${cat.id}`}
+                className="bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:border-blue-300 hover:text-blue-700 transition-colors"
+              >
+                {cat.name}
+                {cat._count && <span className="ml-1 text-gray-400">({cat._count.products})</span>}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Productos destacados */}
+      {products.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Productos disponibles</h2>
+            <Link href="/products" className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
+              Ver todos <ArrowRight size={14} className="ml-1" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
